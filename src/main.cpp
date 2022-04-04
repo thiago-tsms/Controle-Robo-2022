@@ -1,51 +1,62 @@
-//#include <BMI160Gen.h>
-//#include <Wire.h>
+#include "Arduino.h"
 
-#include "Sensores.h"
 
-/*const int i2c_addr = 0x68;
+  // Configuração de Tasks
+#define usStackDepth_Task_Controle 3000
+#define uxPriority_Task_Controle 3
+#define vTaskDelay_Task_Controle 50
 
-TwoWire I2C = TwoWire(1);
+#define usStackDepth_Task_Comunicacao 6000
+#define uxPriority_Task_Comunicacao 2
+#define vTaskDelay_Task_Comunicacao 100
 
-void setup() {
-  Serial.begin(115200); // initialize Serial communication
-  while (!Serial);    // wait for the serial port to open
+#define usStackDepth_Task_Sinalizacao 1000
+#define uxPriority_Task_Sinalizacao 1
+#define vTaskDelay_Task_Sinalizacao 1000
 
-  // initialize device
-  //I2C.setPins(21, 22);
-  I2C.begin(21,22,400000);
-  //I2C.beginTransmission(0x68);
-  BMI160.begin(BMI160GenClass::I2C_MODE, I2C, 0x68, -1);
-}
 
-void loop() {
-  int gx, gy, gz;         // raw gyro values
+	/* --- ESCOPO DE FUNLÇÕES --- */
+void task_controle(void *parametros);
+void task_comunicacao(void *parametros);
+void task_sinalizacao(void *parametros);
 
-  // read raw gyro measurements from device
-  BMI160.readGyro(gx, gy, gz);
-
-  // display tab-separated gyro x/y/z values
-  Serial.print("g:\t");
-  Serial.print(gx);
-  Serial.print("\t");
-  Serial.print(gy);
-  Serial.print("\t");
-  Serial.print(gz);
-  Serial.println();
-
-  delay(500);
-}*/
-
-Sensores sensores;
 
 void setup(){
   Serial.begin(115200);
-  sensores.inicia();
+
+    // Cria as tarefas - FreeRTOS
+  xTaskCreate(task_controle, "task-controle", usStackDepth_Task_Controle, NULL, 2, NULL);
+  xTaskCreate(task_comunicacao, "task-comunicacao", usStackDepth_Task_Comunicacao, NULL, 2, NULL);
+  xTaskCreate(task_sinalizacao, "task-sinalizacao", usStackDepth_Task_Sinalizacao, NULL, 1, NULL);
 }
 
-void loop(){
-  sensores.leitura_sensores();
-  sensores.calcula_dados();
-  //sensores.print_dados();
-  delay(50);
+void loop(){}
+
+  // Tarefa de controle
+void task_controle(void *parametros){
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+
+  while(1){
+    vTaskDelayUntil(&xLastWakeTime, vTaskDelay_Task_Controle);
+  }
+}
+
+
+  // Comunicação Wifi
+void task_comunicacao(void *parametros){
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+
+  while(1){
+    vTaskDelayUntil(&xLastWakeTime, vTaskDelay_Task_Comunicacao);
+  }
+}
+
+
+  // Sinalização WIFI (Conectado, Desconectado, Configurando Wifi)
+void task_sinalizacao(void *parametros){
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+
+  while(1){
+    vTaskDelayUntil(&xLastWakeTime, vTaskDelay_Task_Sinalizacao);
+  }
 }

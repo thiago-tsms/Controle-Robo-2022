@@ -1,0 +1,18 @@
+Sistema de controle de baixo nível de robô unicíclo
+
+Arduíno
+FreRTOS
+ESP32
+
+Componentes:
+
+	Motor DC 6V com Encoder:
+	pinegem: 
+		– 1 – M1 Motor (GND)
+		– 2 – GND Encoder
+		– 3 – Encoder A phase
+		– 4 – Encoder B phase
+		– 5 – 3.3V Encoder
+		– 6 – M1 motor (+)
+	
+	BMI160:
