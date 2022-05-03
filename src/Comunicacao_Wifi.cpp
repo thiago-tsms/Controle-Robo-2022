@@ -9,6 +9,15 @@
 static WebServer server(80);
 
 
+  // Indica os estatus da comunicacao (Usado para a sinalização via LED)
+enum STATUS_SINALIZACAO {
+  Wifi_Off, 
+  Wifi_Iniciado,    // Buscando WIFI
+  Wifi_Conectado,   // Buscando Cliente
+  Cliente_Conectado
+};
+
+
   // Parâmetros de AP
 const char* ssid_ap = "Robo IFF";
 const char* password_ap = "";
@@ -22,6 +31,9 @@ String ssid_st;
 String password_st;
 String ip_st;
 uint16_t port_st;
+
+  // Parâmetros para Sinalização
+STATUS_SINALIZACAO sinalizacao = STATUS_SINALIZACAO::Wifi_Off;
 
 
 	/* --- ESCOPO DE FUNLÇÕES --- */
@@ -74,9 +86,9 @@ void save_dados_flash(String ssid, String password, String ip, String port){
 
 
 
-// =========================================== 
+// ============================================ 
 //	  --- --- --- COMUNICAÇÃO WIFI --- --- ---
-// =========================================== 
+// ============================================
 
   // Entra no modo de comunicação
 void start_comunicacao(TickType_t xLastWakeTime){
@@ -254,4 +266,13 @@ String html_msg_confimacao(){
       "<script>alert('Atributos Salvos!');</script>"+
     "</head>"+
   "</html>";
+}
+
+
+// ================================================== 
+//	  --- --- --- FUNÇÕES DE SINALIZAÇÃO --- --- ---
+// ================================================== 
+
+STATUS_SINALIZACAO get_status_sinalizacao(){
+  return sinalizacao;
 }
