@@ -1,80 +1,81 @@
-#include "Arduino.h"
+#ifndef Comunicacao_H
+#define Comunicacao_H
 
-/* --- BIBLIOTECAS --- */
+  /* --- BIBLIOTECAS --- */
+#include "Arduino.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include "FS.h"
 #include "SPIFFS.h"
 
 
-  // Dados a serem enviados via Wifi
-typedef struct{
-  float v_lin;
-  float v_ang;
-  float roll;
-  float pitch;
-  float yaw;
-} MSG_SEND;
 
-typedef struct{
-  float v_lin;
-  float v_ang;
-} MSG_RESV;
+// =========================================
+//	  --- --- --- CONFIGURAÇÕES --- --- ---
+// =========================================
 
-  // Usado para a truca de menssagem entre task
-QueueHandle_t queue_send;
-QueueHandle_t queue_recv;
-int queue_size = 10;
-
-
-  // Modos de operação da comunicação Wifi - Web Page para comunicação || Tenta estabelecer comunicação com os dados salvos
-enum STATUS_WIFI {Config_Com = 1, Start_Com = 2};
-volatile STATUS_WIFI status_comunicacao = Start_Com;
-
-  // Indica os estatus da comunicacao (Usado para a sinalização via LED)
-enum STATUS_SINALIZACAO {Wifi_Config = 0, Wifi_Desc = 1,  Wifi_Conect = 2, Client_Conect = 3};
-STATUS_SINALIZACAO status_operacao = Wifi_Desc;
-static WebServer server(80);
-
-  // Parâmetros de Asses Point
-const char* ssid_ap = "Robo IFF";  // Enter SSID here
+  // Parâmetros de AP
+const char* ssid_ap = "Robo IFF";
 const char* password_ap = "";
 IPAddress ip_ap(192,168,1,1);
 IPAddress gateway_ap(192,168,1,1);
 IPAddress mask_ap(255,255,255,0);
 const char* host_name = "Robo IFF";
 
-  // Parâmetros de Station
+
+
+// =========================================
+//	  --- --- --- VARIÁVEIS --- --- ---
+// =========================================
+
+static WebServer server(80);
+
+
+  // Indica os estatus da comunicacao (Usado para a sinalização via LED)
+enum Status_Sinalizacao_t {
+  Wifi_Off = 0x0,
+  Wifi_Manager,     // Modo de configuração de SSID e Password
+  Wifi_Iniciado,    // Buscando WIFI
+  Wifi_Conectado,   // Buscando Cliente
+  Cliente_Conectado
+};
+
+
+  // Parâmetros para STA
 String ssid_st;
 String password_st;
 String ip_st;
 uint16_t port_st;
 
 
-/* Escopo de funções*/
-void init_wifi();
+  // Parâmetros para Sinalização
+Status_Sinalizacao_t status_comunicacao = Status_Sinalizacao_t::Wifi_Off;
+
+
+	/* --- ESCOPO DE FUNLÇÕES --- */
 void read_dados_flash();
 void save_dados_flash(String ssid, String password, String ip, String port);
-void start_comunicacao();
-void enviar_receber_msg(WiFiClient *client);
-void config_comunicacao();
-void envia_pag_congiguracao();
+void config_wifi_params();
+void start_comunicacao(TickType_t xLastWakeTime);
+void wifi_manager();
 void config_param_Wifi();
-String html_pag_config();
+void envia_html_pag_congiguracao();
+String html_pag_configuracao();
 String html_msg_confimacao();
+void set_status_sinalizacao(Status_Sinalizacao_t status);
+Status_Sinalizacao_t get_status_sinalizacao();
 
-void init_wifi(){
-    // Cria um buffer para a troca de mensagens entre task
-  queue_send = xQueueCreate(queue_size, sizeof(MSG_SEND));
-  queue_recv = xQueueCreate(queue_size, sizeof(MSG_RESV));
-}
 
-  // Lê dados da flash
+
+// ========================================= 
+//	  --- --- --- MEMORIA FLASH --- --- ---
+// ========================================= 
+
+  // Lê dados salvos na flash
 void read_dados_flash(){
   File file;
   String dados;
   String str_aux;
-  int ind_aux;
 
     //Lê parâmetros salvos na flash
   while(!SPIFFS.begin(true));
@@ -103,37 +104,14 @@ void save_dados_flash(String ssid, String password, String ip, String port){
   SPIFFS.end();
 }
 
-  // Abre página de configuração para conexão socket
-void config_comunicacao(){
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  Serial.println("Configurando AP");
-  status_operacao = Wifi_Config;
 
-  server.stop();
-  WiFi.disconnect();
-  WiFi.mode(WIFI_AP);
-  WiFi.enableAP(true);
-  WiFi.softAP(ssid_ap, password_ap);
-  WiFi.softAPConfig(ip_ap, gateway_ap, mask_ap);
-  WiFi.begin();
-  server.begin();
-  Serial.println("AP configurado");
 
-  server.on("/", HTTP_GET, envia_pag_congiguracao);
-  server.on("/config", HTTP_POST, config_param_Wifi);
-
-      // Aguarda no modo de configuração até que ela seja encerrada
-  while(status_comunicacao == Config_Com){
-      server.handleClient();
-      vTaskDelayUntil(&xLastWakeTime, 10);
-  }
-
-  server.close();
-  WiFi.enableAP(false);
-  WiFi.disconnect();
-}
+// ============================================ 
+//	  --- --- --- COMUNICAÇÃO WIFI --- --- ---
+// ============================================
 
   // Entra no modo de comunicação
+
 void start_comunicacao(TickType_t xLastWakeTime){
 
   WiFiClient client;
@@ -146,7 +124,7 @@ void start_comunicacao(TickType_t xLastWakeTime){
   WiFi.enableSTA(true);
   WiFi.setHostname(host_name);
 
-  while(status_comunicacao == Start_Com){
+  while(status_comunicacao == Status_Sinalizacao_t::Wifi_Iniciado){
 
       //Tenta efetuar conexão no Wifi
     WiFi.begin(ssid_st.c_str(), password_st.c_str());
@@ -154,21 +132,21 @@ void start_comunicacao(TickType_t xLastWakeTime){
       vTaskDelayUntil(&xLastWakeTime, 300);
     }
     if(WiFi.status() == WL_CONNECTED){
-      status_operacao = Wifi_Conect;
+      if(status_comunicacao == Status_Sinalizacao_t::Wifi_Iniciado) status_comunicacao = Status_Sinalizacao_t::Wifi_Conectado;
       Serial.println("Wifi conectado:\nHostname: " + String(WiFi.getHostname()) + "\nIP: " + WiFi.localIP().toString());
     } else {
-      status_operacao = Wifi_Desc;
+      if(status_comunicacao == Status_Sinalizacao_t::Wifi_Conectado) status_comunicacao = Status_Sinalizacao_t::Wifi_Iniciado;
     }
 
       // Enquanto conectado com wifi
-    while(WiFi.status() == WL_CONNECTED && status_comunicacao == Start_Com){
+    while(WiFi.status() == WL_CONNECTED && status_comunicacao == Status_Sinalizacao_t::Wifi_Conectado){
 
         // Testa efetuar conexão com o cliente
       client.connect(ip_st.c_str(), port_st);
       for(int8_t i = 0; !client.connected() && (i < 15); i++){
         vTaskDelayUntil(&xLastWakeTime, 300);
       }
-      if(client.connected()){
+      /*if(client.connected()){
         client.setTimeout(0);
         status_operacao = Client_Conect;
         Serial.println("Cliete conectado:\nIP: " + client.remoteIP().toString() + "\nPorta: " + String(client.remotePort()));
@@ -179,7 +157,7 @@ void start_comunicacao(TickType_t xLastWakeTime){
         // Enquanto conectado com o cliente
       while (client.connected() && status_comunicacao == Start_Com){
         enviar_receber_msg(&client);
-      }
+      }*/
       client.stop();
     }
   }
@@ -189,48 +167,45 @@ void start_comunicacao(TickType_t xLastWakeTime){
   WiFi.disconnect();
 }
 
-  // Envia e recebe dados do cliente
-void enviar_receber_msg(WiFiClient *client){
 
-    // Recebe dados da task de controle e os envia ao cliente
-  if(uxQueueMessagesWaiting(queue_send) > 0){
-    /*
-      Verifica se há mensagens no buffer de comunicação, se houver ela é enviada do cliente. Apenas uma é enviada por vez.
-      ** uxQueueMessagesWaiting - verifica quantas mensagens há no buffer
-      ** xQueueReceive - lê uma mensagem contida no buffer
-      ** (*client).print - envia mensagem String via WiFi ao cliente conectado
-    */
 
-    MSG_SEND msg_send_format;
-    xQueueReceive(queue_send, &msg_send_format, 0);
-    String msg_send = String(msg_send_format.v_lin, 4) + "|" + String(msg_send_format.v_ang, 4) + "|" + String(msg_send_format.roll, 4) + "|" + String(msg_send_format.pitch, 4) + "|" + String(msg_send_format.yaw, 4) + "\n";
-    //String msg_send = String(msg_send_format.v_lin, 4) + "|" + String(msg_send_format.v_ang, 4) + "\n";
-   (*client).print(msg_send);
-   //Serial.println(msg_send);
+// ======================================== 
+//	  --- --- --- WIFI MANAGER --- --- ---
+// ======================================== 
+
+void wifi_manager(){
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  Serial.println("Configurando AP - Wifi Manager");
+
+  server.stop();
+  WiFi.disconnect();
+  WiFi.mode(WIFI_AP);
+  WiFi.enableAP(true);
+  WiFi.softAP(ssid_ap, password_ap);
+  WiFi.softAPConfig(ip_ap, gateway_ap, mask_ap);
+  WiFi.begin();
+  server.begin();
+  Serial.println("AP configurado");
+
+  server.on("/", HTTP_GET, envia_html_pag_congiguracao);
+  server.on("/config", HTTP_POST, config_param_Wifi);
+
+      // Aguarda no modo de configuração até que ela seja encerrada
+  while(status_comunicacao == Status_Sinalizacao_t::Wifi_Manager){
+    server.handleClient();
+    vTaskDelayUntil(&xLastWakeTime, 50);
   }
 
-    // Recebe dados do clientes e os envia a task de controle
-  if((*client).available()){
-    /*
-      Verifica se há mensagens a serem recebidas do cliente, se houcer ela é rebebida e colocada no buffer.
-      ** (*client).available - verifica se há dados enviados pelo cliente
-      ** (*client).readStringUntil - lê dados enviados pelo cliente atá um caracter especificado
-      ** xQueueSend - salva uma mensagem no buffer
-    */
+  server.close();
+  WiFi.enableAP(false);
+  WiFi.disconnect();
 
-    //String msg_recv = (*client).readString();
-    MSG_RESV msg_recv_format;
-    msg_recv_format.v_lin = (*client).readStringUntil('|').toFloat();
-    msg_recv_format.v_ang = (*client).readStringUntil('\n').toFloat();
-    (*client).flush();
-    xQueueSend(queue_recv, &msg_recv_format, 0);
-    //Serial.println(String(msg_recv_format.v_lin, 2));
-  }
+  Serial.println("Wifi Manager encerrado");
 }
 
   // Envia página de configuração
-void envia_pag_congiguracao(){
-  server.send(200,"text/html", html_pag_config());
+void envia_html_pag_congiguracao(){
+  server.send(200,"text/html", html_pag_configuracao());
 }
 
   // Configura os parametros de configuração para conexão Wifi
@@ -245,12 +220,11 @@ void config_param_Wifi(){
   save_dados_flash(ssid, password, ip, port);
   Serial.println("Dados salvos na flash");
 
-  server.send(200,"text/html", html_msg_confimacao());
-  status_comunicacao = Start_Com;
+  server.send(200, "text/html", html_msg_confimacao());
 }
 
-  // Página de configuração de ssid, password, ip, port
-String html_pag_config(){
+  // Página de configuração de ssid, password, ip, port (html)
+String html_pag_configuracao(){
   return String("") +
     "<!DOCTYPE HTML>"+
     "<html lang='pt-br'>"+
@@ -304,7 +278,7 @@ String html_pag_config(){
     "</html>";
 }
 
-  // Mensagem de confirmação de configuração
+  // Mensagem de confirmação de configuração (html)
 String html_msg_confimacao(){
   return String("") + "<html lang='pt-br'>"+
   "<head>"+
@@ -314,3 +288,19 @@ String html_msg_confimacao(){
     "</head>"+
   "</html>";
 }
+
+
+
+// ================================================== 
+//	  --- --- --- FUNÇÕES DE SINALIZAÇÃO --- --- ---
+// ================================================== 
+
+void set_status_sinalizacao(Status_Sinalizacao_t status){
+  status_comunicacao = status;
+}
+
+Status_Sinalizacao_t get_status_sinalizacao(){
+  return status_comunicacao;
+}
+
+#endif
