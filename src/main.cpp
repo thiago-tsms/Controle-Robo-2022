@@ -1,6 +1,8 @@
 #include "Arduino.h"
 
+  /* --- BIBLIOTECAS --- */
 #include "Comunicacao_Wifi.h"
+#include "Sensores.h"
 
 
 
@@ -13,12 +15,13 @@
 #define Analise_Sack_Task_Comunicacao false
 #define Analise_Sack_Task_Sinalizacao false
 #define Modo_Wifi_Ativo true
+#define Sensores_Ativos true
 
 
 
-// =========================================
-//	  --- --- --- CONFIGURAÇÕES --- --- ---
-// =========================================
+// =======================================
+//  --- --- --- CONFIGURAÇÕES --- --- ---
+// =======================================
 
   // Botão e led de sinalização
 #define BTN_Sinalizacao 12
@@ -39,9 +42,17 @@
 
 
 
-// ============================================
-//	  --- --- --- FUNÇÃO PRINCIPAL --- --- ---
-// ============================================
+// ===================================
+//  --- --- --- VARIÁVEIS --- --- ---
+// ===================================
+
+  // Classes instanciadas
+static Sensores sensores;
+
+
+// ==========================================
+//  --- --- --- FUNÇÃO PRINCIPAL --- --- ---
+// ==========================================
 
   // Escopo de Funções
 void IRAM_ATTR configurar_rede();
@@ -62,15 +73,19 @@ void setup(){
     xTaskCreate(task_comunicacao, "task-comunicacao", usStackDepth_Task_Comunicacao, NULL, uxPriority_Task_Comunicacao, NULL);
     xTaskCreate(task_sinalizacao, "task-sinalizacao", usStackDepth_Task_Sinalizacao, NULL, uxPriority_Task_Sinalizacao, NULL);
   #endif
+
+  #if Sensores_Ativos
+    sensores.iniciar();
+  #endif
 }
 
 void loop(){}
 
 
 
-// ===================================
-//	  --- --- --- TAREFAS --- --- ---
-// ===================================
+// =================================
+//	--- --- --- TAREFAS --- --- ---
+// =================================
 
   // Tarefa de controle
 void task_controle(void *parametros){
@@ -80,6 +95,11 @@ void task_controle(void *parametros){
   #endif
 
   while(1){
+
+    #if Sensores_Ativos
+      sensores.leitura_sensores();
+      sensores.processa_dados();
+    #endif
 
     #if Analise_Sack_Task_Controle
       uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
@@ -161,9 +181,9 @@ void task_sinalizacao(void *parametros){
 
 
 
-// ==================================================
-//	  --- --- --- FUNÇÕES DE INTERRUPÇÃO --- --- ---
-// ==================================================
+// ================================================
+//	--- --- --- FUNÇÕES DE INTERRUPÇÃO --- --- ---
+// ================================================
 
   // Altera o modo de operação - Função de interrupção
 void IRAM_ATTR configurar_rede(){
@@ -190,9 +210,9 @@ void IRAM_ATTR calcula_pulsos_roda_esquerda(){deadReckoning.calcula_pulsos_roda_
 
 
 
-// ==========================================
-//	  --- --- --- FUNÇÕES GERAIS --- --- ---
-// ==========================================
+// ========================================
+//	--- --- --- FUNÇÕES GERAIS --- --- ---
+// ========================================
 
   // Efetua as configurações iniciais
 void inicializar(){
@@ -209,9 +229,6 @@ void inicializar(){
   attachInterrupt(digitalPinToInterrupt(BTN_Sinalizacao), configurar_rede, CHANGE);
   /*attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
   attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);*/
-
-    //Configura os sensores
-  /*sensores.inicio();*/
 
     // Configura WiFi
   /*init_wifi();*/

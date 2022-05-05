@@ -1,20 +1,36 @@
 #ifndef Sensores_H
 #define Sensores_H
 
-//#include <Arduino.h>
+#include <Arduino.h>
 
+	/* --- BIBLIOTECAS --- */
 #include <BMI160Gen.h>
 #include <Wire.h>
-
 #include <math.h>
-
 #include "Kalman.h"
+
+
+
+// ====================================================
+//  --- --- --- CONFIGURAÇÃO DE COMPILAÇÃO --- --- ---
+// ====================================================
+#define Print_Dados_Lidos_BMI160_1 false
+#define Print_Dados_Lidos_BMI160_2 false
+#define Print_Dados_Convertidos_BMI160_1 false
+#define Print_Dados_Convertidos_BMI160_2 false
+#define Print_Passa_Baixa_BMI160_1 false
+#define Print_Passa_Baixa_BMI160_2 false
+#define Print_Dados_Fusao false
+
 
 class Sensores {
 
 	private:
 
-	/* --- --- VARIÁVEIS AJUSTÁVEIS --- --- */
+// ===================================================
+//  --- --- --- VARIÁVEIS DE CONFIGURAÇÃO --- --- ---
+// ===================================================
+
 		const int i2c_addr_imu_1 = 0x68;	// Endereço I2C do CI 1
 		const int i2c_addr_imu_2 = 0x69;	// Endereço I2C do CI 2
 
@@ -31,49 +47,47 @@ class Sensores {
 		const float peso_filtro_passa_baixa_acelerometro = 0.8;
 		const float peso_filtro_passa_baixa_giroscopio = 0.8;
 
-		/*const float peso_filtro_passa_alta_giroscopio = 0.8;*/
-
 		const float peso_fusao_sensorial_aceleracao = 0.5;
 		const float peso_fusao_sensorial_giroscopio = 0.5;
-	/* --- --- --- --- --- --- --- --- --- */
 
-	/* --- --- SENSORES --- --- */
+
+
+// ===================================
+//  --- --- --- VARIÁVEIS --- --- ---
+// ===================================
+
+	    /* Classes instanciadas */
 		BMI160GenClass IMU_1;
 		BMI160GenClass IMU_2;
-
 		TwoWire I2C = TwoWire(1);
-	/* --- --- --- ---  --- --- */
 
-	/* --- CONSTANTE DE TEMPO --- */
+	    /* Constantes de tempo */
 		unsigned long millisOld = 0;
 		float dt = 0;
-	/* --- --- --- --- --- --- --- */
 
-	/* --- Filtro de Kalman ---  */
+	    /* Filtro de Kalman */
 		Kalman kalmanRoll;
 		Kalman kalmanPitch;
-	/* --- --- --- --- --- --- ---*/
-	
-	/* --- --- VARIAVEIS --- --- */
 
-			// Estrutura dos dados lidos
+
+			/* Estrutura dos dados lidos */
 		typedef struct {
 				// Dados do acelerômetro
 			int axRaw, ayRaw, azRaw;											// raw values (Valores brutos)			
 			float ax, ay, az;               							// valores convertidos
 			float axPB, ayPB, azPB;												// valores após passa baixa
-			float axPBOld = 0, ayPBOld = 0, azPBOld = 0;	// valores após passa baixa antigos
+			float axPBOld = 0, ayPBOld = 0, azPBOld = 0;	// valores passa baixa da iteração anterior
 
 				// Dados do giroscópio
 			int gxRaw, gyRaw, gzRaw;        							// raw values (Valores brutos)
 			float gx, gy, gz;               							// valores convertidos
 			float gxPB, gyPB, gzPB;												// valores após passa baixa
-			float gxPBOld = 0, gyPBOld = 0, gzPBOld = 0;	// valores após passa baixa antigos
-		} Dados_Sensor;
+			float gxPBOld = 0, gyPBOld = 0, gzPBOld = 0;	// valores passa baixa da iteração anterior
+		} Dados_Sensor_t;
 
-			// Sensores
-		Dados_Sensor dados_IMU_1;
-		Dados_Sensor dados_IMU_2;
+			/* Estrutura de dados dos sensores */
+		Dados_Sensor_t dados_IMU_1;
+		Dados_Sensor_t dados_IMU_2;
 
 			/* Fusão Sensorial */
 		float axFusao = 0, ayFusao = 0, azFusao = 0;
@@ -88,10 +102,12 @@ class Sensores {
 		float aceleracao = 0, aceleracaoOld = 0;
 		float velocidade = 0, velocidadeOld = 0;
 		float distacia = 0, distaciaOld = 0, distaciaTotal = 0;
-	/* --- --- --- --- --- --- */
 
 
-	/* --- --- --- FUNÇÕES --- --- --- */
+
+// =================================
+//	--- --- --- FUNÇÕES --- --- ---
+// =================================
 
 		// Construtor
 	public: Sensores(){
@@ -99,7 +115,7 @@ class Sensores {
 	}
 
 		// Inicia os sensores
-	public: void inicia(){
+	public: void iniciar(){
 
 			// Inicia o I2C
 		I2C.begin(i2c_sda_pin, i2c_scl_pin, 400000);
@@ -115,11 +131,35 @@ class Sensores {
 			// Tempo decorrido entre as leituras
     dt = (millis() - millisOld) / 1000.0;
     millisOld = millis();
+
+    #if Print_Dados_Lidos_BMI160_1
+      print_dados_lidos(&(dados_IMU_1.axRaw), &(dados_IMU_1.ayRaw), &(dados_IMU_1.azRaw), &(dados_IMU_1.gxRaw), &(dados_IMU_1.gyRaw), &(dados_IMU_1.gzRaw));
+    #endif
+
+    #if Print_Dados_Lidos_BMI160_2
+      print_dados_lidos(&(dados_IMU_2.axRaw), &(dados_IMU_2.ayRaw), &(dados_IMU_2.azRaw), &(dados_IMU_2.gxRaw), &(dados_IMU_2.gyRaw), &(dados_IMU_2.gzRaw));
+    #endif
 	}
 
-	public: void calcula_dados(){
+	public: void processa_dados(){
 		passa_baixa_IMU(&dados_IMU_1);
 		passa_baixa_IMU(&dados_IMU_2);
+
+    #if Print_Dados_Convertidos_BMI160_1
+      print_dados(&(dados_IMU_1.ax), &(dados_IMU_1.ay), &(dados_IMU_1.az), &(dados_IMU_1.gx), &(dados_IMU_1.gy), &(dados_IMU_1.gz));
+    #endif
+
+    #if Print_Dados_Convertidos_BMI160_2
+      print_dados(&(dados_IMU_2.ax), &(dados_IMU_2.ay), &(dados_IMU_2.az), &(dados_IMU_2.gx), &(dados_IMU_2.gy), &(dados_IMU_2.gz));
+    #endif
+
+    #if Print_Passa_Baixa_BMI160_1
+      print_dados(&(dados_IMU_1.axPB), &(dados_IMU_1.ayPB), &(dados_IMU_1.azPB), &(dados_IMU_1.gxPB), &(dados_IMU_1.gyPB), &(dados_IMU_1.gzPB));
+    #endif
+
+    #if Print_Passa_Baixa_BMI160_2
+      print_dados(&(dados_IMU_2.axPB), &(dados_IMU_2.ayPB), &(dados_IMU_2.azPB), &(dados_IMU_2.gxPB), &(dados_IMU_2.gyPB), &(dados_IMU_2.gzPB));
+    #endif
 
 			// Aplica a fusão sensorial a partir dos dois acelerômetros
     fusao_sensorial(&dados_IMU_1.axPB, &dados_IMU_2.axPB, &axFusao, peso_fusao_sensorial_aceleracao);
@@ -131,7 +171,13 @@ class Sensores {
     fusao_sensorial(&dados_IMU_1.gyPB, &dados_IMU_2.gyPB, &gyFusao, peso_fusao_sensorial_giroscopio);
     fusao_sensorial(&dados_IMU_1.gzPB, &dados_IMU_2.gzPB, &gzFusao, peso_fusao_sensorial_giroscopio);
 
-			// Efetua o cálculo dos ângulos
+    #if Print_Dados_Fusao
+      print_dados(&axFusao, &ayFusao, &azFusao, &gxFusao, &gyFusao, &gzFusao);
+    #endif
+	}
+
+  public: void calcula_dados(){
+    	// Efetua o cálculo dos ângulos
     angulo_acelerometro();
 
 			// Aplica o filtro de kalman
@@ -140,7 +186,7 @@ class Sensores {
 
 			// Calcula velocidade
 		calcula_velocidade();
-	}
+  }
 
 		// Calcula o ângulo a partir dos valores do acelerômetro
 	private: void angulo_acelerometro(){
@@ -150,7 +196,7 @@ class Sensores {
 }
 
 	// Aplica Filtro Passa baixa
-	private: void passa_baixa_IMU(Dados_Sensor *dados){
+	private: void passa_baixa_IMU(Dados_Sensor_t *dados){
 		
 			// Converte os valores obtidos
     dados->ax = dados->axRaw * const_aRaw;
@@ -182,23 +228,7 @@ class Sensores {
 		(*varFilt) = peso_filtro * (*varNew_1) + (1 - peso_filtro) * (*varNew_2);
 	}
 
-	public: void print_dados(){
-		Serial.print(axFusao);
-		Serial.print(",");
-		Serial.print(ayFusao);
-		Serial.print(",");
-		Serial.print(azFusao);
-		/*Serial.print(String(roll_acel, 4));
-    Serial.print(",");
-    Serial.print(String(pitch_acel, 4));
-    Serial.print(",");*/
-    /*Serial.print(String(roll, 4));
-    Serial.print(",");
-    Serial.print(String(pitch, 4));*/
-    /*Serial.print(",");
-    Serial.print(String(dt, 4));*/
-    Serial.println();
-	}
+	
 
 		// Calcula aceleração e velocidade
 	private: void calcula_velocidade(){
@@ -225,7 +255,12 @@ class Sensores {
 		Serial.println(String(distaciaTotal, 4));*/
 	}
 
-	/* --- --- --- BMI 160 --- --- --- */
+
+
+// =================================
+//	--- --- --- BMI160 --- --- ---
+// =================================
+
 		// Configura o sensor BMI160
 	private: void configura_BMI160(BMI160GenClass *IMU, int i2c_addr, BMI160GenClass::Mode modo_operacao){
 
@@ -251,7 +286,7 @@ class Sensores {
 	}
 
 	// Lê dados do sensor
-	private: void leitura_BMI160(BMI160GenClass *IMU, Dados_Sensor *dados){
+	private: void leitura_BMI160(BMI160GenClass *IMU, Dados_Sensor_t *dados){
 
 			// Lê os valores crus - (read raw gyro measurements from device)
 		IMU->readGyro(dados->gxRaw, dados->gyRaw, dados->gzRaw);
@@ -261,7 +296,63 @@ class Sensores {
 	}
 
 
-	/* --- --- --- IMU 9250 --- --- --- */
+
+// ==================================
+//	--- --- --- IMU 9250 --- --- ---
+// ==================================
+
+
+
+// ===============================
+//	--- --- --- PRINT --- --- ---
+// ===============================
+
+    // Printa dados após leitura, sem nenhuma converção
+  public: void print_dados_lidos(int *axRaw, int *ayRaw, int *azRaw, int *gxRaw, int *gyRaw, int *gzRaw){
+    Serial.print(*axRaw);
+		Serial.print(",");
+		Serial.print(*ayRaw);
+		Serial.print(",");
+		Serial.print(*azRaw);
+    Serial.print(",");
+    Serial.print(*gxRaw);
+		Serial.print(",");
+		Serial.print(*gyRaw);
+		Serial.print(",");
+		Serial.println(*gzRaw);
+  }
+
+  public: void print_dados(float *ax, float *ay, float *az, float *gx, float *gy, float *gz){
+    Serial.print(*ax);
+		Serial.print(",");
+		Serial.print(*ay);
+		Serial.print(",");
+		Serial.print(*az);
+    Serial.print(",");
+    Serial.print(*gx);
+		Serial.print(",");
+		Serial.print(*gy);
+		Serial.print(",");
+		Serial.println(*gz);
+  }
+
+  /*public: void print_dados(){
+		Serial.print(axFusao);
+		Serial.print(",");
+		Serial.print(ayFusao);
+		Serial.print(",");
+		Serial.print(azFusao);
+		Serial.print(String(roll_acel, 4));
+    Serial.print(",");
+    Serial.print(String(pitch_acel, 4));
+    Serial.print(",");
+    Serial.print(String(roll, 4));
+    Serial.print(",");
+    Serial.print(String(pitch, 4));
+    Serial.print(",");
+    Serial.print(String(dt, 4));
+    Serial.println();
+	}*/
 };
 
 
