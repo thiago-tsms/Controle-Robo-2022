@@ -127,6 +127,7 @@ class Sensores {
     
 	}
 
+    // Lê todos os sensores
 	public: void leitura_sensores(){
 		leitura_BMI160(&IMU_1, &dados_IMU_1);
 		leitura_BMI160(&IMU_2, &dados_IMU_2);
@@ -144,6 +145,7 @@ class Sensores {
     #endif
 	}
 
+    // Pré processa os dados
 	public: void processa_dados(){
 		passa_baixa_IMU(&dados_IMU_1);
 		passa_baixa_IMU(&dados_IMU_2);
@@ -179,9 +181,11 @@ class Sensores {
     #endif
 	}
 
-  public: void calcula_dados(){
+    // Efetua os cálculas de angulos e velocidades
+  public: void interpreta_dados(){
     	// Efetua o cálculo dos ângulos
     angulo_acelerometro();
+    angulo_giroscopio();
 
 			// Aplica o filtro de kalman
     roll = kalmanRoll.filtro(roll_acel, gxFusao, dt);
@@ -191,14 +195,7 @@ class Sensores {
 		calcula_velocidade();
   }
 
-		// Calcula o ângulo a partir dos valores do acelerômetro
-	private: void angulo_acelerometro(){
-    roll_acel = -atan2(ayFusao, sqrt(pow(axFusao, 2) + pow(azFusao, 2))) * const_calc_ang_acel;
-    pitch_acel = -atan2(axFusao, sqrt(pow(ayFusao, 2) + pow(azFusao, 2))) * const_calc_ang_acel;
-    //yaw_acel - Não é possível calcular                                                        
-}
-
-	// Aplica Filtro Passa baixa
+	  // Aplica Filtro Passa baixa
 	private: void passa_baixa_IMU(Dados_Sensor_t *dados){
 		
 			// Converte os valores obtidos
@@ -230,6 +227,29 @@ class Sensores {
 	private: void fusao_sensorial(float *varNew_1, float *varNew_2, float *varFilt, float peso_filtro){
 		(*varFilt) = peso_filtro * (*varNew_1) + (1 - peso_filtro) * (*varNew_2);
 	}
+
+		// Calcula o ângulo a partir dos valores do acelerômetro
+	private: void angulo_acelerometro(){
+    roll_acel = -atan2(ayFusao, sqrt(pow(axFusao, 2) + pow(azFusao, 2))) * const_calc_ang_acel;
+    pitch_acel = -atan2(axFusao, sqrt(pow(ayFusao, 2) + pow(azFusao, 2))) * const_calc_ang_acel;
+    //yaw_acel - Não é possível calcular                                                        
+  }
+
+    //Calcula o ângulo a partir dos valores do giroscópio
+  private: void angulo_giroscopio(){
+    //roll_giro -= gxFusao * dt;      //Theta
+    //pitch_giro += gyFusao * dt;     //Phi
+    yaw_giro += gzFusao * dt;       //Psi
+
+    //if(yaw_giro < 0) yaw_giro = 360 - yaw_giro;
+    //if(yaw_giro > 360) yaw_giro = yaw_giro - 360;
+
+    /*
+    roll_giro = roll - gxFusao * dt;        //Theta
+    pitch_giro = pitch + gyFusao * dt;      //Phi
+    yaw_giro = yaw + gzFusao * dt;          //Psi
+    */
+  }
 
 		// Calcula aceleração e velocidade
 	private: void calcula_velocidade(){
@@ -286,7 +306,7 @@ class Sensores {
 		delay(10);
 	}
 
-	// Lê dados do sensor
+	  // Lê dados do sensor
 	private: void leitura_BMI160(BMI160GenClass *IMU, Dados_Sensor_t *dados){
 
 			// Lê os valores crus - (read raw gyro measurements from device)
@@ -299,7 +319,7 @@ class Sensores {
 
 
 // ==================================
-//	--- --- --- IMU 9250 --- --- ---
+//	--- --- --- IMU9250 --- --- ---
 // ==================================
 
 
@@ -309,7 +329,7 @@ class Sensores {
 // ===============================
 
     // Printa dados após leitura, sem nenhuma converção
-  public: void print_dados_lidos(int *axRaw, int *ayRaw, int *azRaw, int *gxRaw, int *gyRaw, int *gzRaw){
+  private: void print_dados_lidos(int *axRaw, int *ayRaw, int *azRaw, int *gxRaw, int *gyRaw, int *gzRaw){
     Serial.print(*axRaw);
 		Serial.print(", ");
 		Serial.print(*ayRaw);
@@ -323,7 +343,7 @@ class Sensores {
 		Serial.println(*gzRaw);
   }
 
-  public: void print_dados(float *ax, float *ay, float *az, float *gx, float *gy, float *gz){
+  private: void print_dados(float *ax, float *ay, float *az, float *gx, float *gy, float *gz){
     Serial.print(*ax);
 		Serial.print(", ");
 		Serial.print(*ay);
@@ -336,26 +356,7 @@ class Sensores {
 		Serial.print(", ");
 		Serial.println(*gz);
   }
-
-  /*public: void print_dados(){
-		Serial.print(axFusao);
-		Serial.print(",");
-		Serial.print(ayFusao);
-		Serial.print(",");
-		Serial.print(azFusao);
-		Serial.print(String(roll_acel, 4));
-    Serial.print(",");
-    Serial.print(String(pitch_acel, 4));
-    Serial.print(",");
-    Serial.print(String(roll, 4));
-    Serial.print(",");
-    Serial.print(String(pitch, 4));
-    Serial.print(",");
-    Serial.print(String(dt, 4));
-    Serial.println();
-	}*/
 };
-
 
 
 #endif

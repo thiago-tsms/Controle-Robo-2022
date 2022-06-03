@@ -3,6 +3,7 @@
   /* --- BIBLIOTECAS --- */
 #include "Comunicacao_Wifi.h"
 #include "Sensores.h"
+#include "DeadReckoning.h"
 
 
 
@@ -16,6 +17,7 @@
 #define Analise_Stack_Task_Sinalizacao false
 #define Modo_Wifi_Ativo false
 #define Sensores_Ativos true
+#define DeadReckoning_Ativo true
 
 
 
@@ -48,6 +50,7 @@
 
   // Classes instanciadas
 Sensores sensores;
+DeadReckoning deadReckoning;
 
 
 // ==========================================
@@ -74,11 +77,18 @@ void setup(){
 
   // Configura as Interrupções Externas
   attachInterrupt(digitalPinToInterrupt(BTN_Sinalizacao), configurar_rede, CHANGE);
-  /*attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);*/
+
+  #if DeadReckoning_Ativo
+    attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);
+  #endif
 
   #if Sensores_Ativos
     sensores.iniciar();
+  #endif
+
+  #if DeadReckoning_Ativo
+    deadReckoning.iniciar();
   #endif
 
     // Cria as tarefas - FreeRTOS
@@ -112,6 +122,7 @@ void task_controle(void *parametros){
     #if Sensores_Ativos
       sensores.leitura_sensores();
       sensores.processa_dados();
+      sensores.interpreta_dados();
     #endif
 
     #if Analise_Stack_Task_Controle
@@ -218,10 +229,11 @@ void IRAM_ATTR configurar_rede(){
 
 
   /* --- INICIALIZAÇÃO DAS INTERRUPÇÕES --- */
-  // IRAM_ATTR -> indicar que esse trecho de código ficará na seção do barramento de instruções da RAM (maior velocidade)
-/*void IRAM_ATTR calcula_pulsos_roda_direita(){deadReckoning.calcula_pulsos_roda_direita();}
-void IRAM_ATTR calcula_pulsos_roda_esquerda(){deadReckoning.calcula_pulsos_roda_esquerda();}*/
-
+#if DeadReckoning_Ativo
+    // IRAM_ATTR -> indicar que esse trecho de código ficará na seção do barramento de instruções da RAM (maior velocidade)
+  void IRAM_ATTR calcula_pulsos_roda_direita(){deadReckoning.calcula_pulsos_roda_direita();}
+  void IRAM_ATTR calcula_pulsos_roda_esquerda(){deadReckoning.calcula_pulsos_roda_esquerda();}
+#endif
 
 
 // ========================================
