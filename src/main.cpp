@@ -11,10 +11,10 @@
 // ===================================================
 
   // Análise do consumo de dados das tarefas
-#define Analise_Sack_Task_Controle false
-#define Analise_Sack_Task_Comunicacao false
-#define Analise_Sack_Task_Sinalizacao false
-#define Modo_Wifi_Ativo true
+#define Analise_Stack_Task_Controle false
+#define Analise_Stack_Task_Comunicacao false
+#define Analise_Stack_Task_Sinalizacao false
+#define Modo_Wifi_Ativo false
 #define Sensores_Ativos true
 
 
@@ -29,11 +29,11 @@
 
 
   // Configuração de Tasks
-#define usStackDepth_Task_Controle 3000
+#define usStackDepth_Task_Controle 6000
 #define uxPriority_Task_Controle 3
-#define vTaskDelay_Task_Controle 50
+#define vTaskDelay_Task_Controle 150
 
-#define usStackDepth_Task_Comunicacao 6000
+#define usStackDepth_Task_Comunicacao 4000
 #define uxPriority_Task_Comunicacao 2
 #define vTaskDelay_Task_Comunicacao 100
 
@@ -47,7 +47,7 @@
 // ===================================
 
   // Classes instanciadas
-static Sensores sensores;
+Sensores sensores;
 
 
 // ==========================================
@@ -59,12 +59,27 @@ void IRAM_ATTR configurar_rede();
 void task_controle(void *parametros);
 void task_comunicacao(void *parametros);
 void task_sinalizacao(void *parametros);
-void inicializar();
 
 
   // Função principal
 void setup(){
-  inicializar();
+
+    // Configura a comunicação serial
+  Serial.begin(115200);
+  Serial.println("\nSistema Iniciando ...");
+
+    //Inicializa pinos para sinalizações
+  pinMode(BTN_Sinalizacao, INPUT);
+  pinMode(LED_Sinalizacao, OUTPUT);
+
+  // Configura as Interrupções Externas
+  attachInterrupt(digitalPinToInterrupt(BTN_Sinalizacao), configurar_rede, CHANGE);
+  /*attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);*/
+
+  #if Sensores_Ativos
+    sensores.iniciar();
+  #endif
 
     // Cria as tarefas - FreeRTOS
   xTaskCreate(task_controle, "task-controle", usStackDepth_Task_Controle, NULL, uxPriority_Task_Controle, NULL);
@@ -74,9 +89,7 @@ void setup(){
     xTaskCreate(task_sinalizacao, "task-sinalizacao", usStackDepth_Task_Sinalizacao, NULL, uxPriority_Task_Sinalizacao, NULL);
   #endif
 
-  #if Sensores_Ativos
-    sensores.iniciar();
-  #endif
+  Serial.println("... Sistema Iniciado");
 }
 
 void loop(){}
@@ -90,7 +103,7 @@ void loop(){}
   // Tarefa de controle
 void task_controle(void *parametros){
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  #if Analise_Sack_Task_Controle
+  #if Analise_Stack_Task_Controle
     UBaseType_t uxHighWaterMark;
   #endif
 
@@ -101,7 +114,7 @@ void task_controle(void *parametros){
       sensores.processa_dados();
     #endif
 
-    #if Analise_Sack_Task_Controle
+    #if Analise_Stack_Task_Controle
       uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
       String txt = "task-controle - stack:: alocado: " + String(usStackDepth_Task_Controle) + " - usado: " + String(usStackDepth_Task_Controle - uxHighWaterMark) + " - restante: " + String(uxHighWaterMark);
       Serial.println(txt);
@@ -114,22 +127,23 @@ void task_controle(void *parametros){
   // Comunicação Wifi
 void task_comunicacao(void *parametros){
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  #if Analise_Sack_Task_Comunicacao
+  #if Analise_Stack_Task_Comunicacao
     UBaseType_t uxHighWaterMark;
   #endif
 
   while(1){
     if(get_status_sinalizacao() == Status_Sinalizacao_t::Wifi_Manager) wifi_manager();
     else {
-      status_comunicacao = Status_Sinalizacao_t::Wifi_Iniciado;
+      set_status_sinalizacao(Status_Sinalizacao_t::Wifi_Iniciado);
       start_comunicacao(xLastWakeTime);
     }
 
-    #if Analise_Sack_Task_Comunicacao
+    #if Analise_Stack_Task_Comunicacao
       uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
       String txt = "task-comunicacao - stack:: alocado: " + String(usStackDepth_Task_Comunicacao) + " - usado: " + String(usStackDepth_Task_Comunicacao - uxHighWaterMark) + " - restante: " + String(uxHighWaterMark);
       Serial.println(txt);
     #endif
+
     vTaskDelayUntil(&xLastWakeTime, vTaskDelay_Task_Comunicacao);
   }
 }
@@ -137,7 +151,7 @@ void task_comunicacao(void *parametros){
 
   // Sinalização WIFI (Conectado, Desconectado, Configurando Wifi)
 void task_sinalizacao(void *parametros){
-  #if Analise_Sack_Task_Sinalizacao
+  #if Analise_Stack_Task_Sinalizacao
     UBaseType_t uxHighWaterMark;
   #endif
 
@@ -170,7 +184,7 @@ void task_sinalizacao(void *parametros){
         break;
     }
 
-    #if Analise_Sack_Task_Sinalizacao
+    #if Analise_Stack_Task_Sinalizacao
       uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
       String txt = "task-sinalizacao - stack:: alocado: " + String(usStackDepth_Task_Sinalizacao) + " - usado: " + String(usStackDepth_Task_Sinalizacao - uxHighWaterMark) + " - restante: " + String(uxHighWaterMark);
       Serial.println(txt);
@@ -213,25 +227,3 @@ void IRAM_ATTR calcula_pulsos_roda_esquerda(){deadReckoning.calcula_pulsos_roda_
 // ========================================
 //	--- --- --- FUNÇÕES GERAIS --- --- ---
 // ========================================
-
-  // Efetua as configurações iniciais
-void inicializar(){
-
-    //Inicializa sinalizações
-  pinMode(BTN_Sinalizacao, INPUT);
-  pinMode(LED_Sinalizacao, OUTPUT);
-
-    // Configura a comunicação serial
-  Serial.begin(115200);
-  Serial.println("\n\n\nSistema Iniciando ...");
-
-    // Configura as Interrupções Externas
-  attachInterrupt(digitalPinToInterrupt(BTN_Sinalizacao), configurar_rede, CHANGE);
-  /*attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);*/
-
-    // Configura WiFi
-  /*init_wifi();*/
-
-  Serial.println("Sistema Iniciado\n");
-}

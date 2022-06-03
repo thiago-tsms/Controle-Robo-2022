@@ -31,24 +31,24 @@ class Sensores {
 //  --- --- --- VARIÁVEIS DE CONFIGURAÇÃO --- --- ---
 // ===================================================
 
-		const int i2c_addr_imu_1 = 0x68;	// Endereço I2C do CI 1
-		const int i2c_addr_imu_2 = 0x69;	// Endereço I2C do CI 2
+  const int i2c_addr_imu_1 = 0x68;	// Endereço I2C do CI 1
+  const int i2c_addr_imu_2 = 0x69;	// Endereço I2C do CI 2
 
-		const int i2c_sda_pin = 21;	// Pino do SDA
-		const int i2c_scl_pin = 22;	// Pino do SCL
+  const int i2c_sda_pin = 21;	// Pino do SDA
+  const int i2c_scl_pin = 22;	// Pino do SCL
 
-		const float gr = 9.80665;       // Valor de gravidade
-		const float pi = 3.141592654;   // Pi
+  const float gr = 9.80665;       // Valor de gravidade
+  const float pi = 3.141592654;   // Pi
 
-		const float const_aRaw = 4 / 32768.0;				// Valor para calculo da aceleração linear
-		const float const_gRaw = 250.0 / 32768.0;		// Valor para calculo da aceleração angular
-		const float const_calc_ang_acel = 180 / pi;	// Valor para o cálculo do angulo a partir do acelerômetro		
+  const float const_aRaw = 4.0 / 32768.0;			    // Valor para calculo da aceleração linear
+  const float const_gRaw = 250.0 / 32768.0;	  	  // Valor para calculo da aceleração angular
+  const float const_calc_ang_acel = 180.0 / pi;		// Valor para o cálculo do angulo a partir do acelerômetro		
 
-		const float peso_filtro_passa_baixa_acelerometro = 0.8;
-		const float peso_filtro_passa_baixa_giroscopio = 0.8;
+  const float peso_filtro_passa_baixa_acelerometro = 0.8;
+  const float peso_filtro_passa_baixa_giroscopio = 0.8;
 
-		const float peso_fusao_sensorial_aceleracao = 0.5;
-		const float peso_fusao_sensorial_giroscopio = 0.5;
+  const float peso_fusao_sensorial_aceleracao = 0.5;
+  const float peso_fusao_sensorial_giroscopio = 0.5;
 
 
 
@@ -56,52 +56,51 @@ class Sensores {
 //  --- --- --- VARIÁVEIS --- --- ---
 // ===================================
 
-	    /* Classes instanciadas */
-		BMI160GenClass IMU_1;
-		BMI160GenClass IMU_2;
-		TwoWire I2C = TwoWire(1);
+    /* Classes instanciadas */
+  BMI160GenClass IMU_1;
+  BMI160GenClass IMU_2;
+  TwoWire I2C = TwoWire(0);
 
-	    /* Constantes de tempo */
-		unsigned long millisOld = 0;
-		float dt = 0;
+    /* Constantes de tempo */
+  unsigned long millisOld = 0;
+  float dt = 0;
 
-	    /* Filtro de Kalman */
-		Kalman kalmanRoll;
-		Kalman kalmanPitch;
+    /* Filtro de Kalman */
+  Kalman kalmanRoll;
+  Kalman kalmanPitch;
 
+    /* Estrutura dos dados lidos */
+  typedef struct {
+      // Dados do acelerômetro
+    int axRaw, ayRaw, azRaw;						          // raw values (Valores brutos)			
+    float ax, ay, az;               				      // valores convertidos
+    float axPB, ayPB, azPB;							          // valores após passa baixa
+    float axPBOld = 0, ayPBOld = 0, azPBOld = 0;	// valores passa baixa da iteração anterior
 
-			/* Estrutura dos dados lidos */
-		typedef struct {
-				// Dados do acelerômetro
-			int axRaw, ayRaw, azRaw;											// raw values (Valores brutos)			
-			float ax, ay, az;               							// valores convertidos
-			float axPB, ayPB, azPB;												// valores após passa baixa
-			float axPBOld = 0, ayPBOld = 0, azPBOld = 0;	// valores passa baixa da iteração anterior
+      // Dados do giroscópio
+    int gxRaw, gyRaw, gzRaw;        			      	// raw values (Valores brutos)
+    float gx, gy, gz;               			      	// valores convertidos
+    float gxPB, gyPB, gzPB;							          // valores após passa baixa
+    float gxPBOld = 0, gyPBOld = 0, gzPBOld = 0;	// valores passa baixa da iteração anterior
+  } Dados_Sensor_t;
 
-				// Dados do giroscópio
-			int gxRaw, gyRaw, gzRaw;        							// raw values (Valores brutos)
-			float gx, gy, gz;               							// valores convertidos
-			float gxPB, gyPB, gzPB;												// valores após passa baixa
-			float gxPBOld = 0, gyPBOld = 0, gzPBOld = 0;	// valores passa baixa da iteração anterior
-		} Dados_Sensor_t;
+    /* Estrutura de dados dos sensores */
+  Dados_Sensor_t dados_IMU_1;
+  Dados_Sensor_t dados_IMU_2;
 
-			/* Estrutura de dados dos sensores */
-		Dados_Sensor_t dados_IMU_1;
-		Dados_Sensor_t dados_IMU_2;
+    /* Fusão Sensorial */
+  float axFusao = 0, ayFusao = 0, azFusao = 0;
+  float gxFusao = 0, gyFusao = 0, gzFusao = 0;
 
-			/* Fusão Sensorial */
-		float axFusao = 0, ayFusao = 0, azFusao = 0;
-		float gxFusao = 0, gyFusao = 0, gzFusao = 0;
+    /* Ângulos calculados */
+  float roll_acel = 0, pitch_acel = 0, yaw_acel = 0; 	//Roll - Rolagem , Pitch - Arfagem, Yaw - Ginada
+  float roll_giro = 0, pitch_giro = 0, yaw_giro = 0; 	//Roll - Rolagem , Pitch - Arfagem, Yaw - Ginada
+  float roll = 0, pitch = 0, yaw = 0; 				        //Roll - Rolagem , Pitch - Arfagem, Yaw - Ginada
 
-			/* Ângulos calculados */
-		float roll_acel = 0, pitch_acel = 0, yaw_acel = 0; 	//Roll - Rolagem , Pitch - Arfagem, Yaw - Ginada
-		float roll_giro = 0, pitch_giro = 0, yaw_giro = 0; 	//Roll - Rolagem , Pitch - Arfagem, Yaw - Ginada
-		float roll = 0, pitch = 0, yaw = 0; 								//Roll - Rolagem , Pitch - Arfagem, Yaw - Ginada
-
-			/* Velocidade */
-		float aceleracao = 0, aceleracaoOld = 0;
-		float velocidade = 0, velocidadeOld = 0;
-		float distacia = 0, distaciaOld = 0, distaciaTotal = 0;
+    /* Velocidade */
+  float aceleracao = 0, aceleracaoOld = 0;
+  float velocidade = 0, velocidadeOld = 0;
+  float distacia = 0, distaciaOld = 0, distaciaTotal = 0;
 
 
 
@@ -118,10 +117,14 @@ class Sensores {
 	public: void iniciar(){
 
 			// Inicia o I2C
-		I2C.begin(i2c_sda_pin, i2c_scl_pin, 400000);
+		//I2C.begin(i2c_sda_pin, i2c_scl_pin, 400000);
+    I2C.begin();
+    I2C.setPins(i2c_sda_pin, i2c_scl_pin);
+    delay(10);
 
-		configura_BMI160(&IMU_1, i2c_addr_imu_1, BMI160GenClass::I2C_MODE);
-		configura_BMI160(&IMU_2, i2c_addr_imu_2, BMI160GenClass::I2C_MODE);
+		configura_BMI160(&IMU_1, i2c_addr_imu_1, BMI160GenClass::Mode::I2C_MODE);
+		configura_BMI160(&IMU_2, i2c_addr_imu_2, BMI160GenClass::Mode::I2C_MODE);
+    
 	}
 
 	public: void leitura_sensores(){
@@ -162,14 +165,14 @@ class Sensores {
     #endif
 
 			// Aplica a fusão sensorial a partir dos dois acelerômetros
-    fusao_sensorial(&dados_IMU_1.axPB, &dados_IMU_2.axPB, &axFusao, peso_fusao_sensorial_aceleracao);
-    fusao_sensorial(&dados_IMU_1.ayPB, &dados_IMU_2.ayPB, &ayFusao, peso_fusao_sensorial_aceleracao);
-    fusao_sensorial(&dados_IMU_1.azPB, &dados_IMU_2.azPB, &azFusao, peso_fusao_sensorial_aceleracao);
+    fusao_sensorial(&(dados_IMU_1.axPB), &(dados_IMU_2.axPB), &axFusao, peso_fusao_sensorial_aceleracao);
+    fusao_sensorial(&(dados_IMU_1.ayPB), &(dados_IMU_2.ayPB), &ayFusao, peso_fusao_sensorial_aceleracao);
+    fusao_sensorial(&(dados_IMU_1.azPB), &(dados_IMU_2.azPB), &azFusao, peso_fusao_sensorial_aceleracao);
 
 			// Aplica a fusão sensorial a partir dos dois giroscópios
-    fusao_sensorial(&dados_IMU_1.gxPB, &dados_IMU_2.gxPB, &gxFusao, peso_fusao_sensorial_giroscopio);
-    fusao_sensorial(&dados_IMU_1.gyPB, &dados_IMU_2.gyPB, &gyFusao, peso_fusao_sensorial_giroscopio);
-    fusao_sensorial(&dados_IMU_1.gzPB, &dados_IMU_2.gzPB, &gzFusao, peso_fusao_sensorial_giroscopio);
+    fusao_sensorial(&(dados_IMU_1.gxPB), &(dados_IMU_2.gxPB), &gxFusao, peso_fusao_sensorial_giroscopio);
+    fusao_sensorial(&(dados_IMU_1.gyPB), &(dados_IMU_2.gyPB), &gyFusao, peso_fusao_sensorial_giroscopio);
+    fusao_sensorial(&(dados_IMU_1.gzPB), &(dados_IMU_2.gzPB), &gzFusao, peso_fusao_sensorial_giroscopio);
 
     #if Print_Dados_Fusao
       print_dados(&axFusao, &ayFusao, &azFusao, &gxFusao, &gyFusao, &gzFusao);
@@ -228,8 +231,6 @@ class Sensores {
 		(*varFilt) = peso_filtro * (*varNew_1) + (1 - peso_filtro) * (*varNew_2);
 	}
 
-	
-
 		// Calcula aceleração e velocidade
 	private: void calcula_velocidade(){
 		/*float x, y, z;
@@ -266,7 +267,7 @@ class Sensores {
 
 			// Inicia a comunicação por I2C (modo de operação, Classe do I2C ,endereço I2C, pino de interrupção)
 		IMU->begin(modo_operacao, I2C, i2c_addr, -1);
-		delay(10);
+		delay(100);
 
 			// Set the accelerometer range to 250 degrees/second
 		IMU->setGyroRange(250);
@@ -310,29 +311,29 @@ class Sensores {
     // Printa dados após leitura, sem nenhuma converção
   public: void print_dados_lidos(int *axRaw, int *ayRaw, int *azRaw, int *gxRaw, int *gyRaw, int *gzRaw){
     Serial.print(*axRaw);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.print(*ayRaw);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.print(*azRaw);
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(*gxRaw);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.print(*gyRaw);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.println(*gzRaw);
   }
 
   public: void print_dados(float *ax, float *ay, float *az, float *gx, float *gy, float *gz){
     Serial.print(*ax);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.print(*ay);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.print(*az);
-    Serial.print(",");
+    Serial.print(", ");
     Serial.print(*gx);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.print(*gy);
-		Serial.print(",");
+		Serial.print(", ");
 		Serial.println(*gz);
   }
 

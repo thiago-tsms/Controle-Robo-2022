@@ -13,8 +13,8 @@ Componentes:
 
 	Placa de sensores:
 	pinagem:
-		- SDA - IO
-		- SCL - IO
+		- SDA - IO21
+		- SCL - IO22
 
 	Motor DC 6V com Encoder:
 	pinegem: 
