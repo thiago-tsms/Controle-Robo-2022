@@ -182,7 +182,8 @@ class Sensores {
 	}
 
     // Efetua os cálculas de angulos e velocidades
-  public: void interpreta_dados(){
+  public: void calcula_angulos(){
+
     	// Efetua o cálculo dos ângulos
     angulo_acelerometro();
     angulo_giroscopio();
@@ -190,9 +191,6 @@ class Sensores {
 			// Aplica o filtro de kalman
     roll = kalmanRoll.filtro(roll_acel, gxFusao, dt);
     pitch = kalmanPitch.filtro(pitch_acel, gyFusao, dt);
-
-			// Calcula velocidade
-		calcula_velocidade();
   }
 
 	  // Aplica Filtro Passa baixa
@@ -343,6 +341,7 @@ class Sensores {
 		Serial.println(*gzRaw);
   }
 
+    // Printa dados
   private: void print_dados(float *ax, float *ay, float *az, float *gx, float *gy, float *gz){
     Serial.print(*ax);
 		Serial.print(", ");

@@ -3,19 +3,30 @@
 
 #include <Arduino.h>
 
+
+
+// ====================================================
+//  --- --- --- CONFIGURAÇÃO DE COMPILAÇÃO --- --- ---
+// ====================================================
+#define Print_Dados_Pulsos false
+#define Print_Dados_Velocidade false
+#define Print_Dados_Velocidade_Angular_Linear false
+
+ 
+
   /* Definição dos pinos da Ponte H */
 #define IN1   19
-#define IN2   18
-#define ENA   5   //Motor Esquerda (PWM)
-#define IN3   17
-#define IN4   16
-#define ENB   4   //Motor Direita (PWM)
+#define IN2   23
+#define ENA   18    //Motor Esquerda (PWM)
+#define IN3   5
+#define IN4   13
+#define ENB   12    //Motor Direita (PWM)
 
   /* Definição dos pinos dos Encoders */
 #define Enc_Dir_C1 36  //Pino com Interrupção (ISR)
 #define Enc_Dir_C2 39
-#define Enc_Esq_C1 34  //Pino com Interrupção (ISR)
-#define Enc_Esq_C2 35
+#define Enc_Esq_C1 35  //Pino com Interrupção (ISR)
+#define Enc_Esq_C2 34
 
 class DeadReckoning {
   
@@ -31,7 +42,7 @@ class DeadReckoning {
 
   const float raio_roda_dir = 0.067 / 2;    // diâmetro da roda (m)
   const float raio_roda_esq = 0.067 / 2;    // diâmetro da roda (m)
-  const float dist_entre_rodas = 0.1796;      // distância entre as rodas (m) -- 19 O padrão
+  const float dist_entre_rodas = 0.1796;    // distância entre as rodas (m) -- 19 O padrão
 
   const float T = 0.1;                  //Período de amostragem (seg)
   const float K_dir = 0.00401372549;    //Ganho motor direito
@@ -255,6 +266,10 @@ class DeadReckoning {
     vel_motor_dir = const_dir * (float)pulsos_motor_dir / dt;     // velocidade (m/s)
     vel_motor_esq = const_esq * (float)pulsos_motor_esq / dt;     // velocidade (m/s)
 
+    #if Print_Dados_Pulsos
+      print_dados_velocidade(&pulsos_motor_dir, &pulsos_motor_esq);
+    #endif
+
     pulsos_motor_dir = 0;
     pulsos_motor_esq = 0;
 
@@ -266,6 +281,15 @@ class DeadReckoning {
       // Mantem o angulo do robô entre os parâmetros de (0 - 360) 
     //if(yaw < 0) yaw = 360 - yaw;
     //if(yaw > 360) yaw = yaw - 360;
+    
+
+    #if Print_Dados_Velocidade
+      print_dados_velocidade(&vel_motor_dir, &vel_motor_esq);
+    #endif
+
+    #if Print_Dados_Velocidade_Angular_Linear
+      print_dados_velocidade(&vel_linear, &vel_angular);
+    #endif
   }
 
     // Efetua o controle da velocidade do motor com base no setpoint calculado
@@ -319,35 +343,35 @@ class DeadReckoning {
 
       // Controla direção dos motores
     if(vel_motor_dir_setpoint > 0){
-      digitalWrite(IN1,LOW);
-      digitalWrite(IN2,HIGH);
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
       estado_motor_dir = POSITIVO;
 
     } else if(vel_motor_dir_setpoint < 0){
-      digitalWrite(IN1,HIGH);
+      digitalWrite(IN1, HIGH);
       digitalWrite(IN2, LOW);
       estado_motor_dir = NEGATIVO;
 
     } else {
       pwm_motor_dir = 0;
-      digitalWrite(IN1,HIGH);
+      digitalWrite(IN1, HIGH);
       digitalWrite(IN2, HIGH);
       estado_motor_dir = STOP;
     }
 
     if(vel_motor_esq_setpoint > 0){
-      digitalWrite(IN3,LOW);
-      digitalWrite(IN4,HIGH);
+      digitalWrite(IN3, HIGH);
+      digitalWrite(IN4, LOW);
       estado_motor_esq = POSITIVO;
 
     } else if(vel_motor_esq_setpoint < 0) {
-      digitalWrite(IN3,HIGH);
-      digitalWrite(IN4, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, HIGH);
       estado_motor_esq = NEGATIVO;
 
     } else {
       pwm_motor_esq = 0;
-      digitalWrite(IN3,HIGH);
+      digitalWrite(IN3, HIGH);
       digitalWrite(IN4, HIGH);
       estado_motor_esq = STOP;
     }
@@ -360,56 +384,20 @@ class DeadReckoning {
     *yaw_ang = yaw;
   }
 
+    // Printa dados
+  private: void print_dados_velocidade(volatile int *p1, volatile int *p2){
+    Serial.print(*p1);
+		Serial.print(", ");
+		Serial.println(*p2);
+  }
 
-/*float getVelDireita(){
-  return vel_motor_dir;
-}
+    // Printa dados
+  private: void print_dados_velocidade(float *v1, float *v2){
+    Serial.print(*v1);
+		Serial.print(", ");
+		Serial.println(*v2);
+  }
 
-float Motores::getVelEsquerda(){
-  return vel_motor_esq;
-}
-
-int Motores::getPWMEsquerda(){
-  return pwm_motor_esq;
-}
-
-int Motores::getPWMDireita(){
-  return pwm_motor_dir;
-}*/
-
-  //Para não dar erro de sintaxe no Visual Studio
-//#include "esp32-hal-ledc.h"
-
- // Recebe os comandos na forma de String ( float | float '\n' )
- /* void recebeComando(String comando){
-    //Serial.println(comando);
-
-      // 0 - v_lin || 1 - v_ang
-    float vel[2];
-    byte count_comando = 0;
-    bool decodificando = true;
-    String msg = "";
-
-    byte i = -1;
-    while(decodificando){
-      i++;
-
-      if(comando[i] == '\0'){
-        vel[count_comando] = msg.toFloat();
-        decodificando = false;
-
-      } else if(comando[i] == '|'){
-        vel[count_comando] = msg.toFloat();
-        count_comando++;
-        msg = "";
-        
-      } else {
-        msg += comando[i];
-      }
-    }
-
-    setVelocidade(vel[0], vel[1]);
-  }*/
 };
 
 #endif

@@ -26,14 +26,14 @@
 // =======================================
 
   // Botão e led de sinalização
-#define BTN_Sinalizacao 12
-#define LED_Sinalizacao 14
+#define BTN_Sinalizacao 25
+#define LED_Sinalizacao 26
 
 
   // Configuração de Tasks
 #define usStackDepth_Task_Controle 6000
 #define uxPriority_Task_Controle 3
-#define vTaskDelay_Task_Controle 150
+#define vTaskDelay_Task_Controle 100
 
 #define usStackDepth_Task_Comunicacao 4000
 #define uxPriority_Task_Comunicacao 2
@@ -59,6 +59,8 @@ DeadReckoning deadReckoning;
 
   // Escopo de Funções
 void IRAM_ATTR configurar_rede();
+void IRAM_ATTR calcula_pulsos_roda_direita();
+void IRAM_ATTR calcula_pulsos_roda_esquerda();
 void task_controle(void *parametros);
 void task_comunicacao(void *parametros);
 void task_sinalizacao(void *parametros);
@@ -75,20 +77,20 @@ void setup(){
   pinMode(BTN_Sinalizacao, INPUT);
   pinMode(LED_Sinalizacao, OUTPUT);
 
-  // Configura as Interrupções Externas
-  attachInterrupt(digitalPinToInterrupt(BTN_Sinalizacao), configurar_rede, CHANGE);
-
-  #if DeadReckoning_Ativo
-    attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);
-  #endif
-
   #if Sensores_Ativos
     sensores.iniciar();
   #endif
 
   #if DeadReckoning_Ativo
     deadReckoning.iniciar();
+  #endif
+
+    // Configura as Interrupções Externas
+  attachInterrupt(digitalPinToInterrupt(BTN_Sinalizacao), configurar_rede, CHANGE);
+
+  #if DeadReckoning_Ativo
+    attachInterrupt(digitalPinToInterrupt(Enc_Dir_C1), calcula_pulsos_roda_direita, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(Enc_Esq_C1), calcula_pulsos_roda_esquerda, CHANGE);
   #endif
 
     // Cria as tarefas - FreeRTOS
@@ -122,7 +124,12 @@ void task_controle(void *parametros){
     #if Sensores_Ativos
       sensores.leitura_sensores();
       sensores.processa_dados();
-      sensores.interpreta_dados();
+      sensores.calcula_angulos();
+    #endif
+
+    #if DeadReckoning_Ativo
+      deadReckoning.calcula_velocidade();
+      deadReckoning.controlador_PID();
     #endif
 
     #if Analise_Stack_Task_Controle
