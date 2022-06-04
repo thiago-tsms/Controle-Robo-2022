@@ -1,6 +1,7 @@
 #ifndef DEADRECKONING_H
 #define DEADRECKONING_H
 
+  /* --- BIBLIOTECAS --- */
 #include <Arduino.h>
 
 
@@ -377,10 +378,14 @@ class DeadReckoning {
     }
   }
 
-    // Obtem dados
-  public: void getDados(float *v_lin, float *v_ang, float *yaw_ang){
+    // Obtem velocidades
+  public: void get_velocidade(float *v_lin, float *v_ang){
     *v_lin = vel_linear;
     *v_ang = vel_angular;
+  }
+
+    // Obtem angulo
+  public: void get_angulo(float *yaw_ang){
     *yaw_ang = yaw;
   }
 

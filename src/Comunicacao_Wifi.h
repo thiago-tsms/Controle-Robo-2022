@@ -156,7 +156,7 @@ void start_comunicacao(TickType_t xLastWakeTime){
 
         // Enquanto conectado com o cliente
       while (client.connected() && status_comunicacao == Start_Com){
-        enviar_receber_msg(&client);
+        send_recv_msg(&client);
       }*/
       client.stop();
     }
@@ -165,6 +165,50 @@ void start_comunicacao(TickType_t xLastWakeTime){
   client.stop();
   WiFi.enableSTA(false);
   WiFi.disconnect();
+}
+
+  // Envia e recebe dados do cliente
+void send_recv_msg(WiFiClient *client){
+
+   /*if(data->mask & mask_json_t::LED){
+    itoa(data->ls.led, data_str, 10);
+    cJSON_AddStringToObject(json_object, JSON_LED, (char *)data_str);
+  }*/
+
+    // Recebe dados da task de controle e os envia ao cliente
+  //if(uxQueueMessagesWaiting(queue_send) > 0){
+    /*
+      Verifica se há mensagens no buffer de comunicação, se houver ela é enviada do cliente. Apenas uma é enviada por vez.
+      ** uxQueueMessagesWaiting - verifica quantas mensagens há no buffer
+      ** xQueueReceive - lê uma mensagem contida no buffer
+      ** (*client).print - envia mensagem String via WiFi ao cliente conectado
+    */
+
+    /*MSG_SEND msg_send_format;
+    xQueueReceive(queue_send, &msg_send_format, 0);
+    String msg_send = String(msg_send_format.v_lin, 4) + "|" + String(msg_send_format.v_ang, 4) + "|" + String(msg_send_format.roll, 4) + "|" + String(msg_send_format.pitch, 4) + "|" + String(msg_send_format.yaw, 4) + "\n";
+    //String msg_send = String(msg_send_format.v_lin, 4) + "|" + String(msg_send_format.v_ang, 4) + "\n";
+   (*client).print(msg_send);
+   //Serial.println(msg_send);
+  }*/
+
+    // Recebe dados do clientes e os envia a task de controle
+  //if((*client).available()){
+    /*
+      Verifica se há mensagens a serem recebidas do cliente, se houcer ela é rebebida e colocada no buffer.
+      ** (*client).available - verifica se há dados enviados pelo cliente
+      ** (*client).readStringUntil - lê dados enviados pelo cliente atá um caracter especificado
+      ** xQueueSend - salva uma mensagem no buffer
+    */
+
+    //String msg_recv = (*client).readString();
+    /*MSG_RESV msg_recv_format;
+    msg_recv_format.v_lin = (*client).readStringUntil('|').toFloat();
+    msg_recv_format.v_ang = (*client).readStringUntil('\n').toFloat();
+    (*client).flush();
+    xQueueSend(queue_recv, &msg_recv_format, 0);
+    //Serial.println(String(msg_recv_format.v_lin, 2));
+  }*/
 }
 
 

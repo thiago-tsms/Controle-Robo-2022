@@ -274,7 +274,12 @@ class Sensores {
 		Serial.println(String(distaciaTotal, 4));*/
 	}
 
-
+    // Obtem os angulos
+  public: void get_angulo(float *r, float *p, float *y){
+    *r = roll;
+    *p= pitch;
+    *y = yaw;
+  }
 
 // =================================
 //	--- --- --- BMI160 --- --- ---

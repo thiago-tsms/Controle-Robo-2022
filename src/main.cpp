@@ -4,6 +4,7 @@
 #include "Comunicacao_Wifi.h"
 #include "Sensores.h"
 #include "DeadReckoning.h"
+#include "DataExchangeJSON.h"
 
 
 
@@ -77,6 +78,10 @@ void setup(){
   pinMode(BTN_Sinalizacao, INPUT);
   pinMode(LED_Sinalizacao, OUTPUT);
 
+  #if Modo_Wifi_Ativo
+    iniciar_data_exchange_json();
+  #endif
+
   #if Sensores_Ativos
     sensores.iniciar();
   #endif
@@ -130,6 +135,14 @@ void task_controle(void *parametros){
     #if DeadReckoning_Ativo
       deadReckoning.calcula_velocidade();
       deadReckoning.controlador_PID();
+    #endif
+
+    #if Modo_Wifi_Ativo && Sensores_Ativos && DeadReckoning_Ativo
+      if((int)get_status_sinalizacao() == Status_Sinalizacao_t::Wifi_Conectado){
+        sensores.get_angulo(&(queue_data_send.roll), &(queue_data_send.pitch), &(queue_data_send.yaw));
+        deadReckoning.get_velocidade(&(queue_data_send.vel_linear), &(queue_data_send.vel_angular));
+        xQueueSendToBack(queue_wifi_send, &queue_data_send, 0);
+      }
     #endif
 
     #if Analise_Stack_Task_Controle
