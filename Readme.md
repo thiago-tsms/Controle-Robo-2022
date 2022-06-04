@@ -1,8 +1,8 @@
-#Sistema de controle de baixo nível de robô unicíclo
+# Sistema de controle de baixo nível de robô unicíclo
 
-##Arduíno
-##FreRTOS
-##ESP32
+## Arduíno
+## FreRTOS
+## ESP32
 
 **Componentes:**
 
