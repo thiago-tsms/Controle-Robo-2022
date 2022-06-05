@@ -43,15 +43,19 @@ typedef struct {
 QueueHandle_t queue_wifi_send;
 QueueHandle_t queue_wifi_recv;
 
-Json_transaction_send_t queue_data_send;
-Json_transaction_recv_t queue_data_recv;
-
 
 
 // =================================
 //	--- --- --- FUNÇÕES --- --- ---
 // =================================
 
+  // Escopo de Funções
+void iniciar_data_exchange_json();
+void serialization_json(String *json_string, Json_transaction_send_t *data);
+void deserialize_json(String *json_string, Json_transaction_recv_t *data);
+
+
+  // Inicializa as queues
 void iniciar_data_exchange_json(){
     // Cria Queue
   queue_wifi_send = xQueueCreate(QUEUE_LENGHT_WIFI_RECV, QUEUE_SIZE_WIFI_RECV);
@@ -60,6 +64,7 @@ void iniciar_data_exchange_json(){
   vQueueAddToRegistry(queue_wifi_recv, "queue-recv-wifi");
 }
 
+  // Converte os dados para um JSON String
 void serialization_json(String *json_string, Json_transaction_send_t *data){
   DynamicJsonDocument json(1024);
   *json_string = "";
@@ -73,10 +78,11 @@ void serialization_json(String *json_string, Json_transaction_send_t *data){
   serializeJson(json, *json_string);
 }
 
-void deserialize_json(String *dado, Json_transaction_recv_t *data){
+  // Obtem os dados de um JSON String
+void deserialize_json(String *json_string, Json_transaction_recv_t *data){
   DynamicJsonDocument json(512);
-  deserializeJson(json, *dado);
-  data->mask = 0;
+  deserializeJson(json, *json_string);
+  data->mask = 0x0000;
 
   if(json.containsKey(JSON_VLIN)){
     data->mask += mask_json_t::VLIN;
@@ -90,25 +96,3 @@ void deserialize_json(String *dado, Json_transaction_recv_t *data){
 }
 
 #endif
-
-
-/*#define QUEUE_LENGHT_INTERRUPT_TIMER 6
-#define QUEUE_SIZE_INTERRUPT_TIMER sizeof(action_interrupt_timer_t)
-#define QUEUESET_LENGHT_RECV (QUEUE_LENGHT_INTERRUPT_TIMER + QUEUE_LENGHT_WIFI_RECV + 0)
-*/
-
-   /*// Cria semáforo
-  ESP_LOGI(TAG_MAIN, "Criando Semáforo");
-  semaphore_lighting_states = xSemaphoreCreateBinary();
-  xSemaphoreGive(semaphore_lighting_states);
-  semaphore_led_states = xSemaphoreCreateBinary();
-  xSemaphoreGive(semaphore_led_states);
-
-//QueueSetHandle_t queueSet_control_recv;
-  
-    // Cria Set
-  ESP_LOGI(TAG_MAIN, "Criando Set");
-  queueSet_control_recv = xQueueCreateSet(QUEUESET_LENGHT_RECV);
-  xQueueAddToSet(queue_interrupt_timer, queueSet_control_recv);
-  xQueueAddToSet(queue_wifi_recv, queueSet_control_recv);
-*/

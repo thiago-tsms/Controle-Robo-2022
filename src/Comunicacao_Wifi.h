@@ -7,6 +7,7 @@
 #include <WebServer.h>
 #include "FS.h"
 #include "SPIFFS.h"
+#include "DataExchangeJSON.h"
 
 
 
@@ -57,6 +58,7 @@ void read_dados_flash();
 void save_dados_flash(String ssid, String password, String ip, String port);
 void config_wifi_params();
 void start_comunicacao(TickType_t xLastWakeTime);
+void send_recv_msg(WiFiClient *client);
 void wifi_manager();
 void config_param_Wifi();
 void envia_html_pag_congiguracao();
@@ -146,19 +148,20 @@ void start_comunicacao(TickType_t xLastWakeTime){
       for(int8_t i = 0; !client.connected() && (i < 15); i++){
         vTaskDelayUntil(&xLastWakeTime, 300);
       }
-      /*if(client.connected()){
+      if(client.connected()){
         client.setTimeout(0);
-        status_operacao = Client_Conect;
+        status_comunicacao = Status_Sinalizacao_t::Cliente_Conectado;
         Serial.println("Cliete conectado:\nIP: " + client.remoteIP().toString() + "\nPorta: " + String(client.remotePort()));
-      } else {
-        status_operacao = Wifi_Conect;
       }
 
         // Enquanto conectado com o cliente
-      while (client.connected() && status_comunicacao == Start_Com){
+      while (client.connected() && status_comunicacao == Status_Sinalizacao_t::Cliente_Conectado){
         send_recv_msg(&client);
-      }*/
+      }
       client.stop();
+      status_comunicacao = Status_Sinalizacao_t::Wifi_Conectado;
+      xQueueReset(queue_wifi_send);
+      xQueueReset(queue_wifi_recv);
     }
   }
 
@@ -170,13 +173,10 @@ void start_comunicacao(TickType_t xLastWakeTime){
   // Envia e recebe dados do cliente
 void send_recv_msg(WiFiClient *client){
 
-   /*if(data->mask & mask_json_t::LED){
-    itoa(data->ls.led, data_str, 10);
-    cJSON_AddStringToObject(json_object, JSON_LED, (char *)data_str);
-  }*/
+   
 
     // Recebe dados da task de controle e os envia ao cliente
-  //if(uxQueueMessagesWaiting(queue_send) > 0){
+  if(uxQueueMessagesWaiting(queue_wifi_send) > 0){
     /*
       Verifica se há mensagens no buffer de comunicação, se houver ela é enviada do cliente. Apenas uma é enviada por vez.
       ** uxQueueMessagesWaiting - verifica quantas mensagens há no buffer
@@ -184,16 +184,15 @@ void send_recv_msg(WiFiClient *client){
       ** (*client).print - envia mensagem String via WiFi ao cliente conectado
     */
 
-    /*MSG_SEND msg_send_format;
-    xQueueReceive(queue_send, &msg_send_format, 0);
-    String msg_send = String(msg_send_format.v_lin, 4) + "|" + String(msg_send_format.v_ang, 4) + "|" + String(msg_send_format.roll, 4) + "|" + String(msg_send_format.pitch, 4) + "|" + String(msg_send_format.yaw, 4) + "\n";
-    //String msg_send = String(msg_send_format.v_lin, 4) + "|" + String(msg_send_format.v_ang, 4) + "\n";
-   (*client).print(msg_send);
-   //Serial.println(msg_send);
-  }*/
+    Json_transaction_send_t queue_data_send;
+    String json_string[512];
+    xQueueReceive(queue_wifi_send, &queue_data_send, 0);
+    serialization_json(json_string, &queue_data_send);
+    (*client).print(json_string->c_str());
+  }
 
     // Recebe dados do clientes e os envia a task de controle
-  //if((*client).available()){
+  if((*client).available()){
     /*
       Verifica se há mensagens a serem recebidas do cliente, se houcer ela é rebebida e colocada no buffer.
       ** (*client).available - verifica se há dados enviados pelo cliente
@@ -201,14 +200,12 @@ void send_recv_msg(WiFiClient *client){
       ** xQueueSend - salva uma mensagem no buffer
     */
 
-    //String msg_recv = (*client).readString();
-    /*MSG_RESV msg_recv_format;
-    msg_recv_format.v_lin = (*client).readStringUntil('|').toFloat();
-    msg_recv_format.v_ang = (*client).readStringUntil('\n').toFloat();
+    Json_transaction_recv_t queue_data_recv;
+    String json_string = (*client).readString();
+    deserialize_json(&json_string, &queue_data_recv);
     (*client).flush();
-    xQueueSend(queue_recv, &msg_recv_format, 0);
-    //Serial.println(String(msg_recv_format.v_lin, 2));
-  }*/
+    xQueueSend(queue_wifi_recv, &queue_data_recv, 0);
+  }
 }
 
 

@@ -16,7 +16,7 @@
 #define Analise_Stack_Task_Controle false
 #define Analise_Stack_Task_Comunicacao false
 #define Analise_Stack_Task_Sinalizacao false
-#define Modo_Wifi_Ativo false
+#define Modo_Wifi_Ativo true
 #define Sensores_Ativos true
 #define DeadReckoning_Ativo true
 
@@ -124,6 +124,9 @@ void task_controle(void *parametros){
     UBaseType_t uxHighWaterMark;
   #endif
 
+  Json_transaction_send_t queue_data_send;
+  Json_transaction_recv_t queue_data_recv;
+
   while(1){
 
     #if Sensores_Ativos
@@ -141,7 +144,15 @@ void task_controle(void *parametros){
       if((int)get_status_sinalizacao() == Status_Sinalizacao_t::Wifi_Conectado){
         sensores.get_angulo(&(queue_data_send.roll), &(queue_data_send.pitch), &(queue_data_send.yaw));
         deadReckoning.get_velocidade(&(queue_data_send.vel_linear), &(queue_data_send.vel_angular));
-        xQueueSendToBack(queue_wifi_send, &queue_data_send, 0);
+        xQueueSend(queue_wifi_send, &queue_data_send, 0);
+
+        if(uxQueueMessagesWaiting(queue_wifi_recv) > 0){
+          xQueueReceive(queue_wifi_recv, &queue_data_recv, 0);
+
+          if((queue_data_recv.mask & mask_json_t::VLIN) && (queue_data_recv.mask & mask_json_t::VANG)){
+            deadReckoning.set_velocidade(queue_data_recv.vel_linear, queue_data_recv.vel_angular);
+          }
+        }
       }
     #endif
 
@@ -153,7 +164,6 @@ void task_controle(void *parametros){
     vTaskDelayUntil(&xLastWakeTime, vTaskDelay_Task_Controle);
   }
 }
-
 
   // Comunicação Wifi
 void task_comunicacao(void *parametros){
@@ -178,7 +188,6 @@ void task_comunicacao(void *parametros){
     vTaskDelayUntil(&xLastWakeTime, vTaskDelay_Task_Comunicacao);
   }
 }
-
 
   // Sinalização WIFI (Conectado, Desconectado, Configurando Wifi)
 void task_sinalizacao(void *parametros){
@@ -246,7 +255,6 @@ void IRAM_ATTR configurar_rede(){
     time = 0;
   }
 }
-
 
   /* --- INICIALIZAÇÃO DAS INTERRUPÇÕES --- */
 #if DeadReckoning_Ativo

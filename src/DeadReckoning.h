@@ -338,7 +338,7 @@ class DeadReckoning {
   }
 
     //Calcula a velocidade de cada motor com base nas velocidades (v_lin, v_ang) [linear e angular] passadas
-  public: void setVelocidade(float v_lin, float v_ang){
+  public: void set_velocidade(float v_lin, float v_ang){
     vel_motor_dir_setpoint = v_lin + (v_ang * dist_entre_rodas) / 2;
     vel_motor_esq_setpoint = v_lin - (v_ang * dist_entre_rodas) / 2;
 
