@@ -33,7 +33,7 @@ Componentes:
 	Motor DC 6V com Encoder:
 		Codigos para envios de dados via JSON:
 			VLIN - Velocidade Linear
-  	  VANG - Velocidade Angular
+			VANG - Velocidade Angular
 			PBAC - Peso do filtro passa baixa para o acelerômetro
 			PBGI - Peso do filtro passa baixa para o giroscópio
 			FSAC - Peso da fusão sensorial para o acelerômetro
