@@ -15,10 +15,18 @@
 #define JSON_ROLL "ROLL"
 #define JSON_PITCH "PITCH"
 #define JSON_YAW "YAW"
+#define JSON_PBAC "PBAC"
+#define JSON_PBGI "PBGI"
+#define JSON_FSAC "FSAC"
+#define JSON_FSGI "FSGI"
 
 typedef enum {
   VLIN = 0b0000000000000001,
   VANG = 0b0000000000000010,
+  PBAC = 0b0000000000000100,
+  PBGI = 0b0000000000001000,
+  FSAC = 0b0000000000010000,
+  FSGI = 0b0000000000100000,
 } mask_json_t;
 
 typedef struct {
@@ -33,7 +41,13 @@ typedef struct {
   uint16_t mask;
   float vel_linear;
   float vel_angular;
+  float peso_filtro_passa_baixa_acelerometro;
+  float peso_filtro_passa_baixa_giroscopio;
+  float peso_fusao_sensorial_aceleracao;
+  float peso_fusao_sensorial_giroscopio;
 } Json_transaction_recv_t;
+
+
 
 #define QUEUE_LENGHT_WIFI_SEND 6
 #define QUEUE_LENGHT_WIFI_RECV 10
@@ -92,6 +106,29 @@ void deserialize_json(String *json_string, Json_transaction_recv_t *data){
   if(json.containsKey(JSON_VANG)){
     data->mask += mask_json_t::VANG;
     data->vel_angular = json[JSON_VANG];
+  }
+
+    // Apenas verdadeiro quando não é recebido velocidade angular e linhear, apenas dados de configuração
+  if(!(data->mask & (mask_json_t::VLIN + mask_json_t::VANG))){
+    if(json.containsKey(JSON_PBAC)){
+      data->mask += mask_json_t::PBAC;
+      data->vel_angular = json[JSON_PBAC];
+    }
+
+    if(json.containsKey(JSON_PBGI)){
+      data->mask += mask_json_t::PBGI;
+      data->vel_angular = json[JSON_PBGI];
+    }
+
+    if(json.containsKey(JSON_FSAC)){
+      data->mask += mask_json_t::FSAC;
+      data->vel_angular = json[JSON_FSAC];
+    }
+
+    if(json.containsKey(JSON_FSGI)){
+      data->mask += mask_json_t::FSGI;
+      data->vel_angular = json[JSON_FSGI];
+    }
   }
 }
 

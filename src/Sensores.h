@@ -44,11 +44,11 @@ class Sensores {
   const float const_gRaw = 250.0 / 32768.0;	  	  // Valor para calculo da aceleração angular
   const float const_calc_ang_acel = 180.0 / pi;		// Valor para o cálculo do angulo a partir do acelerômetro		
 
-  const float peso_filtro_passa_baixa_acelerometro = 0.8;
-  const float peso_filtro_passa_baixa_giroscopio = 0.8;
+  float peso_filtro_passa_baixa_acelerometro = 0.8;
+  float peso_filtro_passa_baixa_giroscopio = 0.8;
 
-  const float peso_fusao_sensorial_aceleracao = 0.5;
-  const float peso_fusao_sensorial_giroscopio = 0.5;
+  float peso_fusao_sensorial_aceleracao = 0.5;
+  float peso_fusao_sensorial_giroscopio = 0.5;
 
 
 
@@ -360,7 +360,55 @@ class Sensores {
 		Serial.print(", ");
 		Serial.println(*gz);
   }
-};
 
+
+
+
+  // ==========================================================================
+  //	--- --- --- SET E GET DE DADOS DE CONFIGURAÇÃO DE CALIBRAGEM --- --- ---
+  // ==========================================================================
+
+  // Peso do filtro passa baixa acelerômetro
+  public: void set_peso_filtro_passa_baixa_acelerometro(float data){
+    peso_filtro_passa_baixa_acelerometro = data;
+  }
+  public: float get_peso_filtro_passa_baixa_acelerometro(){
+    return peso_filtro_passa_baixa_acelerometro;
+  }
+  //-------------------------------------------------------------
+
+
+  // Peso do filtro passa baixa giroscópio
+  public: void set_peso_filtro_passa_baixa_giroscopio(float data){
+    peso_filtro_passa_baixa_giroscopio = data;
+  }
+
+  public: float get_peso_filtro_passa_baixa_giroscopio(){
+    return peso_filtro_passa_baixa_giroscopio;
+  }
+  //-------------------------------------------------------------
+
+
+  // Peso filtro fusão sensorial acelerômetro
+  public: void set_peso_fusao_sensorial_aceleracao(float data){
+    peso_fusao_sensorial_aceleracao = data;
+  }
+
+  public: float get_peso_fusao_sensorial_aceleracao(){
+    return peso_fusao_sensorial_aceleracao;
+  }
+  //-------------------------------------------------------------
+
+  // Peso filtro fusão sensorial girosópio
+  public: void set_peso_fusao_sensorial_giroscopio(float data){
+    peso_fusao_sensorial_giroscopio = data;
+  }
+
+  public: float get_peso_fusao_sensorial_giroscopio(){
+    return peso_fusao_sensorial_giroscopio;
+  }
+  //-------------------------------------------------------------
+
+};
 
 #endif

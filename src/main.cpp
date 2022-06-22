@@ -65,6 +65,7 @@ void IRAM_ATTR calcula_pulsos_roda_esquerda();
 void task_controle(void *parametros);
 void task_comunicacao(void *parametros);
 void task_sinalizacao(void *parametros);
+void receive_configuration_data(Json_transaction_recv_t *queue_data_recv);
 
 
   // Função principal
@@ -151,6 +152,8 @@ void task_controle(void *parametros){
 
           if((queue_data_recv.mask & mask_json_t::VLIN) && (queue_data_recv.mask & mask_json_t::VANG)){
             deadReckoning.set_velocidade(queue_data_recv.vel_linear, queue_data_recv.vel_angular);
+          } else {
+            receive_configuration_data(&queue_data_recv);
           }
         }
       }
@@ -264,6 +267,15 @@ void IRAM_ATTR configurar_rede(){
 #endif
 
 
+
 // ========================================
 //	--- --- --- FUNÇÕES GERAIS --- --- ---
 // ========================================
+
+  // Recebe os dados de configuração e salva nos seus respectivos dispositivos
+void receive_configuration_data(Json_transaction_recv_t *queue_data_recv){
+  if(queue_data_recv->mask & mask_json_t::PBAC) sensores.set_peso_filtro_passa_baixa_acelerometro(queue_data_recv->peso_filtro_passa_baixa_acelerometro);
+  if(queue_data_recv->mask & mask_json_t::PBGI) sensores.set_peso_filtro_passa_baixa_giroscopio(queue_data_recv->peso_filtro_passa_baixa_giroscopio);
+  if(queue_data_recv->mask & mask_json_t::FSAC) sensores.set_peso_fusao_sensorial_aceleracao(queue_data_recv->peso_fusao_sensorial_aceleracao);
+  if(queue_data_recv->mask & mask_json_t::FSGI) sensores.set_peso_fusao_sensorial_giroscopio(queue_data_recv->peso_fusao_sensorial_giroscopio);
+}
